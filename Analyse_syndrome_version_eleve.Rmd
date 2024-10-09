@@ -1,0 +1,139 @@
+---
+title: "Analyse_des_incidences_grippaux"
+author: "Martin ADECHI"
+date: "`r Sys.Date()`"
+output: 
+  pdf_document:
+    toc = true
+  html_document:
+    toc = true
+    theme: journal
+documentclass: article
+classoption: a4paper
+header-includes:
+- \usepackage[french]{babel}
+- \usepackage[upright]{fourier}
+- \hypersetup{colorlinks=true,pagebackref=true}
+
+  
+---
+
+```{r setup, include=FALSE,warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+## Exploration des données
+
+Les données de l'incidence grippal sont disponibles sur le site de Réseaux Sentinelles [Reseaux Sentinelles]("hhttps://www.sentiweb.fr/datasets/all/inc-3-RDD.csv")
+```{r}
+data_url = "https://www.sentiweb.fr/datasets/all/inc-3-RDD.csv"
+data = read.csv(data_url,skip = 1)
+```
+```{r}
+head(data)
+```
+La variable Week désigne la semaine calendaire et la variable inc désigne le nombre d'incidences dans la semaine. Ce sont les deux qui nous interesse
+
+Nous allons voir une breve description de notre base de données. Apres chercher les lignes contenant des manquants
+```{r}
+lignes.na = apply(data, 1 ,function(x) any(is.na(x)))
+data[lignes.na,]
+
+```
+Voyons la structure des données
+```{r}
+str(data)
+```
+
+```{r}
+data = read.csv(data_url,skip = 1,na.strings = "-")
+```
+
+Revoyons cette fameuse structure
+```{r}
+str(data)
+```
+Recherchons les lignes avec les manquants
+```{r}
+lignes.na = apply(data, 1 ,function(x) any(is.na(x)))
+data[lignes.na,]
+
+```
+## Gestion des dates
+Notre jeu de donnée utilise le format ISO 8601 et nous allons le gérer avec parsedate
+
+```{r}
+library(parsedate)
+```
+Pour faciliter le traitement suivant, nous remplaçons ces semaines par les dates qui correspondent aux lundis. Voici une petite fonction qui fait la conversion pour une seule valeur:
+```{r}
+convert_week <- function(w){
+  ws = paste(w)
+  iso = paste0(substring(ws,1,4),'-W',substring(ws,5,6))
+  as.character(parse_iso_8601(iso))
+}
+```
+Maintenant une nouvelle colonne du dataframe appelé date sera créé pour remplacer la colonne week
+```{r}
+data$Date = as.Date(convert_week(data$week))
+```
+
+```{r}
+class(data$Date)
+```
+Les points sont dans l'ordre chronologique inverse. Il faut les trier
+```{r}
+data = data[order(data$Date),]
+```
+
+```{r}
+#diff(data$Date)
+```
+## Inspection
+```{r}
+plot(data$Date,data$inc,type = "l",ylab='Incidence hebdomadaire',xlab = 'Date',col='blue')
+```
+Un zoom sur les dernieres années montre la localisation des pics en hiver. Les creux des incidences se trouvent en été
+```{r}
+with(tail(data,700),plot(Date,inc,type = "l",ylab='Incidence hebdomadaire',xlab = 'Date',col='blue'))
+```
+Étant donné que le pic de l'épidémie se situe en hiver, à cheval entre deux années civiles, nous définissons la période de référence entre deux minima de l'incidence, du 1er août de l'année N au 1er août de l'année N+1. Nous mettons l'année N+1 comme étiquette sur cette année décalée, car le pic de l'épidémie est toujours au début de l'année N+1.
+
+```{r}
+pic_annuel = function(annee) {
+      debut = paste0(annee-1,"-08-01")
+      fin = paste0(annee,"-08-01")
+      semaines = data$Date > debut & data$Date <= fin
+      sum(data$inc[semaines], na.rm=TRUE)
+
+}
+```
+Nous devons aussi faire attention aux premières et dernières années de notre jeux de données. Les données commencent en octobre 1984, ce qui ne permet pas de quantifier complètement le pic attribué à 1985. Nous l'enlevons donc de notre analyse. Par contre, pour une exécution en octobre 2018, les données se terminent après le 1er août 2018, ce qui nous permet d'inclure cette année.
+
+```{r}
+annees = 1986:2024
+```
+Nous créons un nouveau jeu de données pour l'incidence annuelle, en applicant la fonction pic_annuel à chaque année:
+
+```{r}
+inc_annuelle <- data.frame(Année = annees,inc = sapply(annees,pic_annuel))
+```
+```{r}
+head(inc_annuelle)
+```
+## Inspecion
+
+Voici les incidences annuelles en graphique
+```{r}
+plot(inc_annuelle, type="p",pch =10, xlab="Année", ylab="Incidence annuelle")
+```
+Cherchons les 10 premieres plus grandes incidences
+```{r}
+inc_ord <- inc_annuelle[order(-inc_annuelle$inc),]
+head(inc_ord)
+```
+
+```{r}
+hist(inc_annuelle$inc, breaks=10, xlab="Incidence annuelle", ylab="Nb d'observations", main="")
+```
+
+
