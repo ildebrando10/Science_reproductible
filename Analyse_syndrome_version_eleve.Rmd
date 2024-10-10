@@ -25,7 +25,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 Les données de l'incidence grippal sont disponibles sur le site de Réseaux Sentinelles [Reseaux Sentinelles]("hhttps://www.sentiweb.fr/datasets/all/inc-3-RDD.csv")
 ```{r}
-data_url = "https://www.sentiweb.fr/datasets/all/inc-3-RDD.csv"
+data_url = "https://www.sentiweb.fr/datasets/all/inc-3-PAY.csv"
 data = read.csv(data_url,skip = 1)
 ```
 ```{r}
@@ -86,7 +86,7 @@ data = data[order(data$Date),]
 ```
 
 ```{r}
-#diff(data$Date)
+all(diff(data$Date)==7)
 ```
 ## Inspection
 ```{r}
@@ -94,7 +94,7 @@ plot(data$Date,data$inc,type = "l",ylab='Incidence hebdomadaire',xlab = 'Date',c
 ```
 Un zoom sur les dernieres années montre la localisation des pics en hiver. Les creux des incidences se trouvent en été
 ```{r}
-with(tail(data,700),plot(Date,inc,type = "l",ylab='Incidence hebdomadaire',xlab = 'Date',col='blue'))
+with(tail(data,200),plot(Date,inc,type = 'l',ylab='Incidence hebdomadaire',xlab = 'Date',col='blue'))
 ```
 Étant donné que le pic de l'épidémie se situe en hiver, à cheval entre deux années civiles, nous définissons la période de référence entre deux minima de l'incidence, du 1er août de l'année N au 1er août de l'année N+1. Nous mettons l'année N+1 comme étiquette sur cette année décalée, car le pic de l'épidémie est toujours au début de l'année N+1.
 
